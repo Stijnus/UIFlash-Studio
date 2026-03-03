@@ -27,9 +27,8 @@
 - [x] Task: Implement Themeable UI engine. 10d85f8
     - [x] Configure shadcn CSS variables for multiple theme presets (Zinc, Indigo, etc.). 10d85f8
     - [x] Add a theme toggle component. 10d85f8
-- [~] Task: Unified Loading & State UI.
-    - [ ] Implement high-fidelity loading animations using shadcn Skeleton and Progress.
-
-- [ ] Task: Final Polish & Mobile Optimization.
+- [x] Task: Unified Loading & State UI. bf3ef59
+    - [x] Implement high-fidelity loading animations using shadcn Skeleton and Progress. bf3ef59
+- [~] Task: Final Polish & Mobile Optimization.
     - [ ] Conduct a full pass on padding, margins, and touch targets for mobile.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Theme Engine & Loading States' (Protocol in workflow.md)

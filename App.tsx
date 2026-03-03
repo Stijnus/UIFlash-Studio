@@ -686,36 +686,36 @@ export default function App() {
             </SidebarFooter>
           </Sidebar>
 
-          <main className="flex-1 flex flex-col relative immersive-app-container">
+          <main className="flex-1 flex flex-col relative immersive-app-container overflow-hidden">
             {/* Top Navigation */}
-            <div className="h-16 w-full border-b border-border/50 flex items-center justify-between px-6 glass-panel z-20">
-              <div className="flex items-center gap-4">
+            <div className="h-16 w-full border-b border-border/50 flex items-center justify-between px-4 md:px-6 glass-panel z-20 shrink-0">
+              <div className="flex items-center gap-2 md:gap-4">
                 <SidebarTrigger className="h-9 w-9 rounded-lg border border-border" />
-                <Separator orientation="vertical" className="h-4 bg-border/50" />
+                <Separator orientation="vertical" className="h-4 bg-border/50 hidden md:block" />
                 {styleName && (
-                  <div className="px-3 py-1 bg-primary/10 border border-primary/20 rounded-full text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-2">
+                  <div className="px-2.5 py-1 bg-primary/10 border border-primary/20 rounded-full text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5 md:gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-                    {styleName}
+                    <span className="truncate max-w-[80px] md:max-w-none">{styleName}</span>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 md:gap-3">
                 {generatedHtml && (
-                  <div className="flex items-center gap-1.5 mr-3 border-r border-border/50 pr-3">
+                  <div className="flex items-center gap-1 mr-1 md:mr-3 border-r border-border/50 pr-2 md:pr-3">
                     <Button variant="ghost" size="icon" onClick={copyCode} className="h-8 w-8 hover:bg-secondary/50">
                       {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={downloadCode} className="h-8 w-8 hover:bg-secondary/50">
+                    <Button variant="ghost" size="icon" onClick={downloadCode} className="h-8 w-8 hover:bg-secondary/50 hidden sm:flex">
                       <Download className="w-3.5 h-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={downloadImage} className="h-8 w-8 hover:bg-secondary/50">
+                    <Button variant="ghost" size="icon" onClick={downloadImage} className="h-8 w-8 hover:bg-secondary/50 hidden sm:flex">
                       <Camera className="w-3.5 h-3.5" />
                     </Button>
                   </div>
                 )}
 
-                <Tabs value={deviceMode} onValueChange={(v) => setDeviceMode(v as any)} className="bg-secondary/50 p-0.5 rounded-lg border border-border">
+                <Tabs value={deviceMode} onValueChange={(v) => setDeviceMode(v as any)} className="bg-secondary/50 p-0.5 rounded-lg border border-border hidden sm:block">
                   <TabsList className="bg-transparent h-8 p-0">
                     <TabsTrigger value="desktop" className="h-7 w-8 p-0"><Monitor className="w-3.5 h-3.5" /></TabsTrigger>
                     <TabsTrigger value="mobile" className="h-7 w-8 p-0"><Smartphone className="w-3.5 h-3.5" /></TabsTrigger>
@@ -724,22 +724,22 @@ export default function App() {
 
                 <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="bg-secondary/50 p-0.5 rounded-lg border border-border">
                   <TabsList className="bg-transparent h-8 p-0">
-                    <TabsTrigger value="preview" className="h-7 px-3 text-[10px] font-bold uppercase">View</TabsTrigger>
-                    <TabsTrigger value="code" className="h-7 px-3 text-[10px] font-bold uppercase">Code</TabsTrigger>
-                    <TabsTrigger value="analysis" className="h-7 px-3 text-[10px] font-bold uppercase">Audit</TabsTrigger>
+                    <TabsTrigger value="preview" className="h-7 px-2 md:px-3 text-[9px] md:text-[10px] font-bold uppercase">View</TabsTrigger>
+                    <TabsTrigger value="code" className="h-7 px-2 md:px-3 text-[9px] md:text-[10px] font-bold uppercase">Code</TabsTrigger>
+                    <TabsTrigger value="analysis" className="h-7 px-2 md:px-3 text-[9px] md:text-[10px] font-bold uppercase hidden md:flex">Audit</TabsTrigger>
                   </TabsList>
                 </Tabs>
                 
                 <Separator orientation="vertical" className="h-4 bg-border/50" />
                 <ModeToggle />
-                <Button variant="ghost" size="icon" onClick={() => setIsDrawerOpen(true)} className="h-9 w-9 rounded-lg border border-border">
+                <Button variant="ghost" size="icon" onClick={() => setIsDrawerOpen(true)} className="h-9 w-9 rounded-lg border border-border hidden sm:flex">
                   <Settings className="w-4 h-4" />
                 </Button>
               </div>
             </div>
 
             {/* Workspace Area */}
-            <div className="flex-1 w-full p-8 flex items-center justify-center relative overflow-hidden">
+            <div className="flex-1 w-full p-4 md:p-8 flex items-center justify-center relative overflow-hidden">
               {!generatedHtml && !activeGen?.isGenerating && viewMode !== 'analysis' ? (
                 <div className="text-center max-w-sm animate-in fade-in zoom-in-95 duration-1000">
                   <div className="w-20 h-20 bg-secondary/30 border border-border rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl backdrop-blur-3xl">
