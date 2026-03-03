@@ -36,9 +36,27 @@ vi.mock('lucide-react', () => ({
   History: () => <div data-testid="icon-history" />,
   Clock: () => <div data-testid="icon-clock" />,
   ChevronRight: () => <div data-testid="icon-chevron" />,
+  LayoutPanelLeft: () => <div data-testid="icon-layout" />,
 }));
 
-describe('App Component Persistence Integration', () => {
+// Mock shadcn components
+vi.mock('@/components/ui/sidebar', () => ({
+  Sidebar: ({ children }: any) => <div>{children}</div>,
+  SidebarContent: ({ children }: any) => <div>{children}</div>,
+  SidebarFooter: ({ children }: any) => <div>{children}</div>,
+  SidebarHeader: ({ children }: any) => <div>{children}</div>,
+  SidebarProvider: ({ children }: any) => <div>{children}</div>,
+  SidebarTrigger: () => <button>Trigger</button>,
+  SidebarMenu: ({ children }: any) => <div>{children}</div>,
+  SidebarMenuItem: ({ children }: any) => <div>{children}</div>,
+  SidebarMenuButton: ({ children }: any) => <button>{children}</button>,
+}));
+
+vi.mock('@/components/ui/tooltip', () => ({
+  TooltipProvider: ({ children }: any) => <div>{children}</div>,
+}));
+
+describe('App Component Redesign Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
@@ -46,7 +64,7 @@ describe('App Component Persistence Integration', () => {
 
   it('renders correctly', () => {
     render(<App />);
-    expect(screen.getByText(/UI Generator/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^Studio$/i })).toBeInTheDocument();
   });
 
   it('loads sessions from storage on mount', () => {

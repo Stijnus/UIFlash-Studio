@@ -7,8 +7,8 @@
 - [x] Task: Implement Glassmorphism 2.0 base styles. 5305b7d
     - [x] Update `tailwind.config.js` with backdrop blur utilities and custom shadows. 5305b7d
     - [x] Create global CSS classes for "glass" effects. 5305b7d
-- [~] Task: Redesign main application shell with shadcn/ui.
-    - [ ] Implement base layout using shadcn component patterns.
+- [x] Task: Redesign main application shell with shadcn/ui. e623010
+    - [x] Implement base layout using shadcn component patterns. e623010
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: shadcn/ui Integration & Foundation' (Protocol in workflow.md)
 
 ## Phase 2: Core Interface Overhaul
