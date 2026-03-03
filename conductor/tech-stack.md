@@ -18,3 +18,5 @@
 - **Testing:** Vitest, React Testing Library, JSDOM
 - **Persistence:** Browser localStorage
 - **Theme Management:** next-themes
+- **Scripts & Tooling:** tsx (TypeScript execution for scripts)
+- **Environment Validation:** Custom script for .env verification
