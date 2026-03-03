@@ -1,7 +1,7 @@
 # Implementation Plan: REDesign style ui and ux of the app
 
 ## Phase 1: shadcn/ui Integration & Foundation
-- [ ] Task: Install and configure shadcn/ui in the project.
+- [~] Task: Install and configure shadcn/ui in the project.
     - [ ] Run `npx shadcn-ui@latest init` (using non-interactive flags if possible).
     - [ ] Verify tailwind config and global styles are correctly set up for shadcn.
 - [ ] Task: Implement Glassmorphism 2.0 base styles.
