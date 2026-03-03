@@ -11,7 +11,7 @@
     - [x] Implement base layout using shadcn component patterns. e623010
 - [x] Task: Conductor - User Manual Verification 'Phase 1: shadcn/ui Integration & Foundation' (Protocol in workflow.md) 9fc5633
 
-## Phase 2: Core Interface Overhaul
+## Phase 2: Core Interface Overhaul [checkpoint: d230205]
 - [x] Task: Redesign Sidebar & Controls. 9db6139
     - [x] Write unit tests for the new sidebar component. 9db6139
     - [x] Implement Sidebar using shadcn/ui (Sheet or Sidebar component). 9db6139
@@ -21,9 +21,10 @@
 - [x] Task: Revamp Input Ergonomics & Asset Generator. 58333ec
     - [x] Write unit tests for prompt submission and image upload UI. 58333ec
     - [x] Implement prompt area and asset generator using shadcn/ui form components. 58333ec
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Core Interface Overhaul' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Core Interface Overhaul' (Protocol in workflow.md) d230205
 
 ## Phase 3: Theme Engine & Loading States
+
 - [ ] Task: Implement Themeable UI engine.
     - [ ] Configure shadcn CSS variables for multiple theme presets (Zinc, Indigo, etc.).
     - [ ] Add a theme toggle component.
