@@ -1,11 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { generateUI, analyzeImages, analyzeImageForFeedback, generateImageAsset } from './src/services/geminiService';
 import SideDrawer from './components/SideDrawer';
-import { Settings, Image as ImageIcon, Code, Play, Smartphone, Monitor, Trash2, Layers, Loader2, Download, Copy, Check, Search, Camera, Sparkles, Plus } from 'lucide-react';
+import { Settings, Image as ImageIcon, Code, Play, Smartphone, Monitor, Trash2, Layers, Loader2, Download, Copy, Check, Search, Camera, Sparkles, Plus, History, Clock, ChevronRight } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { VARIATION_PACKS } from './constants';
+import { loadSessions, saveSessions } from './src/utils/storage';
+import { Session, Artifact } from './types';
 
 export default function App() {
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sidebarTab, setSidebarTab] = useState<'controls' | 'history'>('controls');
+  
   const [prompt, setPrompt] = useState('');
   const [images, setImages] = useState<{ data: string; mimeType: string; url: string }[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -36,6 +42,21 @@ export default function App() {
   }[]>([]);
   const [activeGenId, setActiveGenId] = useState<string>('');
 
+  // Load history on mount
+  useEffect(() => {
+    const loaded = loadSessions();
+    if (loaded && loaded.length > 0) {
+      setSessions(loaded);
+    }
+  }, []);
+
+  // Save history whenever sessions change
+  useEffect(() => {
+    if (sessions.length > 0) {
+      saveSessions(sessions);
+    }
+  }, [sessions]);
+
   const activeGen = generations.find(g => g.id === activeGenId);
   const generatedHtml = activeGen?.html || '';
   const styleName = activeGen?.styleName || '';
@@ -51,6 +72,49 @@ export default function App() {
       }
     }
   }, [generatedHtml, viewMode, deviceMode, activeGenId]);
+
+  const loadSession = (session: Session) => {
+    setActiveSessionId(session.id);
+    setPrompt(session.prompt);
+    setImages(session.images?.map(img => ({ 
+        data: img.data, 
+        mimeType: img.mimeType, 
+        url: `data:${img.mimeType};base64,${img.data}` 
+    })) || []);
+    setGenerations(session.artifacts.map(art => ({
+      id: art.id,
+      styleName: art.styleName,
+      html: art.html,
+      streamingCode: '',
+      isGenerating: false
+    })));
+    if (session.artifacts.length > 0) {
+      setActiveGenId(session.artifacts[0].id);
+    }
+    setSidebarTab('controls');
+    setViewMode('preview');
+  };
+
+  const createNewSession = () => {
+    setActiveSessionId(null);
+    setPrompt('');
+    setImages([]);
+    setGenerations([]);
+    setActiveGenId('');
+    setError('');
+  };
+
+  const deleteSession = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSessions(prev => {
+        const updated = prev.filter(s => s.id !== id);
+        saveSessions(updated); // Immediate save
+        return updated;
+    });
+    if (activeSessionId === id) {
+        createNewSession();
+    }
+  };
 
   const processFiles = (files: FileList | File[]) => {
     const remainingSlots = 3 - images.length;
@@ -83,7 +147,6 @@ export default function App() {
     const files = e.target.files;
     if (!files) return;
     processFiles(files);
-    // Reset input value so the same file can be uploaded again if removed
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -105,18 +168,14 @@ export default function App() {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    
     const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      processFiles(files);
-    }
+    if (files && files.length > 0) processFiles(files);
   };
 
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
       if (!items) return;
-
       const imageFiles: File[] = [];
       for (let i = 0; i < items.length; i++) {
         if (items[i].type.indexOf('image') !== -1) {
@@ -124,12 +183,8 @@ export default function App() {
           if (blob) imageFiles.push(blob);
         }
       }
-
-      if (imageFiles.length > 0) {
-        processFiles(imageFiles);
-      }
+      if (imageFiles.length > 0) processFiles(imageFiles);
     };
-
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
   }, [images.length]);
@@ -138,9 +193,11 @@ export default function App() {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const runGeneration = async (genId: string, promptText: string, previousHtml?: string) => {
+  const runGeneration = async (genId: string, promptText: string, sessionId: string, previousHtml?: string) => {
     try {
       const generator = generateUI(promptText, model, images, previousHtml, deviceMode);
+      let lastArtifact: Artifact | null = null;
+
       for await (const chunk of generator) {
         setGenerations(prev => prev.map(g => {
           if (g.id === genId) {
@@ -151,11 +208,33 @@ export default function App() {
                 setError(chunk.html);
                 return { ...g, isGenerating: false };
               } else {
+                lastArtifact = {
+                  id: genId,
+                  styleName: chunk.styleName || g.styleName,
+                  html: chunk.html || '',
+                  status: 'complete'
+                };
                 return { ...g, styleName: chunk.styleName || g.styleName, html: chunk.html || '' };
               }
             }
           }
           return g;
+        }));
+      }
+
+      if (lastArtifact) {
+        setSessions(prev => prev.map(s => {
+          if (s.id === sessionId) {
+            const existingArtIdx = s.artifacts.findIndex(a => a.id === genId);
+            const newArtifacts = [...s.artifacts];
+            if (existingArtIdx >= 0) {
+              newArtifacts[existingArtIdx] = lastArtifact!;
+            } else {
+              newArtifacts.push(lastArtifact!);
+            }
+            return { ...s, artifacts: newArtifacts, timestamp: Date.now() };
+          }
+          return s;
         }));
       }
     } catch (err: any) {
@@ -184,11 +263,24 @@ export default function App() {
       isGenerating: true
     };
 
-    if (isIteration) {
+    let currentSessionId = activeSessionId;
+    
+    if (isIteration && currentSessionId) {
       setGenerations(prev => [...prev, newGen]);
     } else {
       setGenerations([newGen]);
+      const newSession: Session = {
+        id: Date.now().toString(),
+        prompt: prompt,
+        timestamp: Date.now(),
+        artifacts: [],
+        images: images.map(img => ({ data: img.data, mimeType: img.mimeType }))
+      };
+      setSessions(prev => [newSession, ...prev]);
+      currentSessionId = newSession.id;
+      setActiveSessionId(currentSessionId);
     }
+    
     setActiveGenId(newGenId);
     
     try {
@@ -202,7 +294,7 @@ export default function App() {
 
       const targetPrompt = customPrompt || finalPrompt;
       const previousHtml = isIteration && activeGen ? activeGen.html : undefined;
-      await runGeneration(newGenId, targetPrompt, previousHtml);
+      await runGeneration(newGenId, targetPrompt, currentSessionId!, previousHtml);
     } catch (err: any) {
       setError(err.message || 'An error occurred during generation.');
     } finally {
@@ -222,6 +314,20 @@ export default function App() {
     setIsGenerating(true);
     setError('');
     setViewMode('preview');
+
+    let currentSessionId = activeSessionId;
+    if (!currentSessionId) {
+        const newSession: Session = {
+            id: Date.now().toString(),
+            prompt: prompt,
+            timestamp: Date.now(),
+            artifacts: [],
+            images: images.map(img => ({ data: img.data, mimeType: img.mimeType }))
+        };
+        setSessions(prev => [newSession, ...prev]);
+        currentSessionId = newSession.id;
+        setActiveSessionId(currentSessionId);
+    }
 
     const pack = VARIATION_PACKS.find(p => p.id === selectedVariationPack) || VARIATION_PACKS[0];
     
@@ -248,15 +354,8 @@ export default function App() {
       for (let i = 0; i < newGenerations.length; i++) {
         const gen = newGenerations[i];
         const style = pack.styles[i];
-        const variationPrompt = `Design the following UI: "${finalPrompt}". 
-        
-        CRITICAL INSTRUCTION: You must strictly follow this specific aesthetic style:
-        Style Name: ${style.name}
-        Description: ${style.desc}
-        
-        Ensure the UI is fully functional, uses Tailwind CSS, and perfectly embodies the requested aesthetic.`;
-        
-        await runGeneration(gen.id, variationPrompt);
+        const variationPrompt = `Design the following UI: "${finalPrompt}". Strictly follow style: ${style.name} (${style.desc})`;
+        await runGeneration(gen.id, variationPrompt, currentSessionId!);
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred during generation.');
@@ -267,17 +366,13 @@ export default function App() {
 
   const handleAnalyzeImage = async () => {
     if (images.length === 0) return;
-    
     setIsAnalyzing(true);
     setError('');
     setAnalysisResult('');
     setViewMode('analysis');
-    
     try {
       const generator = analyzeImageForFeedback(images);
-      for await (const chunk of generator) {
-        setAnalysisResult(prev => prev + chunk);
-      }
+      for await (const chunk of generator) setAnalysisResult(prev => prev + chunk);
     } catch (err: any) {
       setError(err.message || 'An error occurred during analysis.');
     } finally {
@@ -327,11 +422,9 @@ export default function App() {
 
   const downloadImage = async () => {
     if (!iframeRef.current || !iframeRef.current.contentDocument) return;
-    
     try {
       const doc = iframeRef.current.contentDocument;
       const html2canvas = (await import('html2canvas')).default;
-      
       const isMobile = deviceMode === 'mobile';
       const canvas = await html2canvas(doc.body, {
         useCORS: true,
@@ -340,7 +433,6 @@ export default function App() {
         width: isMobile ? 375 : doc.body.scrollWidth,
         windowWidth: isMobile ? 375 : doc.defaultView?.innerWidth,
       });
-      
       const url = canvas.toDataURL('image/png');
       const a = document.createElement('a');
       a.href = url;
@@ -356,7 +448,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-100 font-sans overflow-hidden">
-      {/* Left Sidebar - Controls */}
+      {/* Left Sidebar - Controls & History */}
       <div className="w-80 border-r border-zinc-800 bg-zinc-900/50 flex flex-col h-full backdrop-blur-xl z-10">
         <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -365,209 +457,252 @@ export default function App() {
             </div>
             <h1 className="font-semibold tracking-tight text-lg">UI Generator</h1>
           </div>
-          <button onClick={() => setIsDrawerOpen(true)} className="p-2 hover:bg-zinc-800 rounded-md transition-colors text-zinc-400 hover:text-zinc-100">
-            <Settings className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button 
+                onClick={() => setSidebarTab(sidebarTab === 'controls' ? 'history' : 'controls')}
+                className={`p-2 rounded-md transition-colors ${sidebarTab === 'history' ? 'bg-indigo-500/20 text-indigo-400' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'}`}
+                title="Toggle History"
+            >
+                <History className="w-5 h-5" />
+            </button>
+            <button onClick={() => setIsDrawerOpen(true)} className="p-2 hover:bg-zinc-800 rounded-md transition-colors text-zinc-400 hover:text-zinc-100">
+                <Settings className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-zinc-400 uppercase tracking-wider">Describe your UI</label>
-              <button 
-                onClick={() => setPrompt('')}
-                className="text-[10px] font-bold text-zinc-600 hover:text-zinc-400 uppercase tracking-widest transition-colors"
-                disabled={!prompt}
-              >
-                Clear
-              </button>
-            </div>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="E.g., A modern SaaS dashboard with a sidebar, header, and a grid of metric cards. Use glassmorphism."
-              className="w-full h-32 bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-sm focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none resize-none transition-all placeholder:text-zinc-600"
-            />
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-zinc-400 uppercase tracking-wider">Reference Images</label>
-              <span className="text-xs text-zinc-600">{images.length}/3</span>
-            </div>
-            
-            <div 
-              className={`grid grid-cols-2 gap-3 p-1 rounded-xl transition-all ${isDragging ? 'bg-indigo-500/10 ring-2 ring-indigo-500 ring-dashed' : ''}`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              {images.map((img, idx) => (
-                <div key={idx} className="relative group aspect-video rounded-lg overflow-hidden border border-zinc-800 bg-zinc-950">
-                  <img src={img.url} alt="Reference" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                  <button 
-                    onClick={() => removeImage(idx)}
-                    className="absolute top-1 right-1 p-1.5 bg-black/60 hover:bg-red-500/80 text-white rounded-md backdrop-blur-sm transition-colors opacity-0 group-hover:opacity-100"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-              
-              {images.length < 3 && (
+        {sidebarTab === 'controls' ? (
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-zinc-400 uppercase tracking-wider">Describe your UI</label>
                 <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`aspect-video rounded-lg border border-dashed flex flex-col items-center justify-center gap-2 transition-all ${
-                    isDragging 
-                      ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' 
-                      : 'border-zinc-700 hover:border-indigo-500 hover:bg-indigo-500/5 text-zinc-500 hover:text-indigo-400'
-                  }`}
+                  onClick={createNewSession}
+                  className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 uppercase tracking-widest transition-colors"
                 >
-                  <ImageIcon className="w-5 h-5" />
-                  <span className="text-xs font-medium">{isDragging ? 'Drop here' : 'Add Image'}</span>
+                  New Session
+                </button>
+              </div>
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="E.g., A modern SaaS dashboard..."
+                className="w-full h-32 bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-sm focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none resize-none transition-all placeholder:text-zinc-600"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-zinc-400 uppercase tracking-wider">Reference Images</label>
+                <span className="text-xs text-zinc-600">{images.length}/3</span>
+              </div>
+              
+              <div 
+                className={`grid grid-cols-2 gap-3 p-1 rounded-xl transition-all ${isDragging ? 'bg-indigo-500/10 ring-2 ring-indigo-500 ring-dashed' : ''}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                {images.map((img, idx) => (
+                  <div key={idx} className="relative group aspect-video rounded-lg overflow-hidden border border-zinc-800 bg-zinc-950">
+                    <img src={img.url} alt="Reference" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                    <button 
+                      onClick={() => removeImage(idx)}
+                      className="absolute top-1 right-1 p-1.5 bg-black/60 hover:bg-red-500/80 text-white rounded-md backdrop-blur-sm transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                
+                {images.length < 3 && (
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`aspect-video rounded-lg border border-dashed flex flex-col items-center justify-center gap-2 transition-all ${
+                      isDragging 
+                        ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' 
+                        : 'border-zinc-700 hover:border-indigo-500 hover:bg-indigo-500/5 text-zinc-500 hover:text-indigo-400'
+                    }`}
+                  >
+                    <ImageIcon className="w-5 h-5" />
+                    <span className="text-xs font-medium">{isDragging ? 'Drop here' : 'Add Image'}</span>
+                  </button>
+                )}
+              </div>
+              {images.length > 0 && (
+                <button 
+                  onClick={handleAnalyzeImage}
+                  disabled={isAnalyzing}
+                  className="w-full py-2 px-3 mt-2 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white border border-zinc-700/50 disabled:bg-zinc-900 disabled:text-zinc-600 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition-all"
+                >
+                  {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
+                  <span>{isAnalyzing ? 'Analyzing...' : 'Analyze Image for Feedback'}</span>
                 </button>
               )}
+              <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" multiple className="hidden" />
             </div>
-            {images.length > 0 && (
-              <button 
-                onClick={handleAnalyzeImage}
-                disabled={isAnalyzing}
-                className="w-full py-2 px-3 mt-2 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white border border-zinc-700/50 disabled:bg-zinc-900 disabled:text-zinc-600 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition-all"
-              >
-                {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
-                <span>{isAnalyzing ? 'Analyzing...' : 'Analyze Image for Feedback'}</span>
-              </button>
-            )}
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleImageUpload} 
-              accept="image/*" 
-              multiple 
-              className="hidden" 
-            />
-          </div>
 
-          <div className="space-y-3 pt-4 border-t border-zinc-800">
-            <div className="flex items-center justify-between">
+            <div className="space-y-3 pt-4 border-t border-zinc-800">
               <label className="text-sm font-medium text-zinc-400 uppercase tracking-wider flex items-center gap-2">
                 <Sparkles className="w-3 h-3 text-indigo-400" />
                 Asset Generator
               </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={assetPrompt}
+                  onChange={(e) => setAssetPrompt(e.target.value)}
+                  placeholder="E.g., Tech logo..."
+                  className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
+                  onKeyDown={(e) => e.key === 'Enter' && handleGenerateAsset()}
+                />
+                <button
+                  onClick={handleGenerateAsset}
+                  disabled={isGeneratingAsset || !assetPrompt}
+                  className="p-2 bg-indigo-500 text-white hover:bg-indigo-600 disabled:bg-zinc-800 disabled:text-zinc-500 rounded-lg transition-all"
+                >
+                  {isGeneratingAsset ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {generatedAsset && (
+                <div className="relative group aspect-square rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950 mt-3 shadow-xl">
+                  <img src={generatedAsset.url} alt="Generated Asset" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                    <button 
+                      onClick={addAssetToReferences}
+                      disabled={images.length >= 3}
+                      className="px-3 py-1.5 bg-indigo-500 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 hover:bg-indigo-600 transition-colors disabled:bg-zinc-700"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Use as Reference
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            <p className="text-[10px] text-zinc-500 leading-tight">Generate custom logos, icons, or hero images using Gemini Flash Image.</p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={assetPrompt}
-                onChange={(e) => setAssetPrompt(e.target.value)}
-                placeholder="E.g., Minimalist tech logo..."
-                className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
-                onKeyDown={(e) => e.key === 'Enter' && handleGenerateAsset()}
-              />
-              <button
-                onClick={handleGenerateAsset}
-                disabled={isGeneratingAsset || !assetPrompt}
-                className="p-2 bg-indigo-500 text-white hover:bg-indigo-600 disabled:bg-zinc-800 disabled:text-zinc-500 rounded-lg transition-all"
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-zinc-400 uppercase tracking-wider">History</label>
+              <button 
+                onClick={() => {
+                  if (confirm('Clear all history?')) {
+                    setSessions([]);
+                    saveSessions([]);
+                    createNewSession();
+                  }
+                }}
+                className="text-[10px] font-bold text-red-400 hover:text-red-300 uppercase tracking-widest transition-colors"
               >
-                {isGeneratingAsset ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                Clear All
               </button>
             </div>
-
-            {generatedAsset && (
-              <div className="relative group aspect-square rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950 mt-3 shadow-xl">
-                <img src={generatedAsset.url} alt="Generated Asset" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                  <button 
-                    onClick={addAssetToReferences}
-                    disabled={images.length >= 3}
-                    className="px-3 py-1.5 bg-indigo-500 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 hover:bg-indigo-600 transition-colors disabled:bg-zinc-700"
-                  >
-                    <Plus className="w-3 h-3" />
-                    Use as Reference
-                  </button>
-                  <button 
-                    onClick={() => setGeneratedAsset(null)}
-                    className="px-3 py-1.5 bg-zinc-800 text-zinc-300 rounded-lg text-xs font-medium hover:bg-zinc-700 transition-colors"
-                  >
-                    Discard
-                  </button>
-                </div>
+            {sessions.length === 0 ? (
+              <div className="text-center py-10">
+                <Clock className="w-8 h-8 text-zinc-800 mx-auto mb-3" />
+                <p className="text-xs text-zinc-600">No recent generations</p>
               </div>
+            ) : (
+              sessions.map((session) => (
+                <div 
+                    key={session.id}
+                    onClick={() => loadSession(session)}
+                    className={`group p-3 rounded-xl border transition-all cursor-pointer ${
+                        activeSessionId === session.id 
+                        ? 'bg-indigo-500/10 border-indigo-500/50' 
+                        : 'bg-zinc-900/50 border-zinc-800 hover:border-zinc-700'
+                    }`}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-zinc-200 line-clamp-2 leading-relaxed">
+                        {session.prompt || 'Untitled Generation'}
+                      </p>
+                    </div>
+                    <button 
+                        onClick={(e) => deleteSession(session.id, e)}
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 text-zinc-500 transition-all"
+                    >
+                        <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-zinc-500">
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      <span>{new Date(session.timestamp).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="px-1.5 py-0.5 bg-zinc-800 rounded">{session.artifacts.length} versions</span>
+                      <ChevronRight className="w-3 h-3" />
+                    </div>
+                  </div>
+                </div>
+              ))
             )}
           </div>
-        </div>
+        )}
 
+        {/* Footer Actions */}
         <div className="p-6 border-t border-zinc-800 bg-zinc-900/80 backdrop-blur-md flex flex-col gap-3">
-          {activeGen?.html ? (
-            <div className="flex gap-2">
-              <button
-                onClick={handleIterate}
-                disabled={isGenerating || (!prompt && images.length === 0)}
-                className="flex-1 py-3 px-4 bg-indigo-500 text-white hover:bg-indigo-600 disabled:bg-zinc-800 disabled:text-zinc-500 rounded-xl font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-indigo-500/20"
-              >
-                {isGenerating ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Play className="w-5 h-5 fill-current" />
-                )}
-                <span>Iterate</span>
-              </button>
-              <button
-                onClick={handleGenerate}
-                disabled={isGenerating || (!prompt && images.length === 0)}
-                className="flex-1 py-3 px-4 bg-white text-black hover:bg-zinc-200 disabled:bg-zinc-800 disabled:text-zinc-500 rounded-xl font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-white/5"
-              >
-                <span>New UI</span>
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={handleGenerate}
-              disabled={isGenerating || (!prompt && images.length === 0)}
-              className="w-full py-3 px-4 bg-white text-black hover:bg-zinc-200 disabled:bg-zinc-800 disabled:text-zinc-500 rounded-xl font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-white/5"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Generating...</span>
-                </>
+          {sidebarTab === 'controls' && (
+            <>
+              {activeGen?.html ? (
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleIterate}
+                    disabled={isGenerating || (!prompt && images.length === 0)}
+                    className="flex-1 py-3 px-4 bg-indigo-500 text-white hover:bg-indigo-600 disabled:bg-zinc-800 disabled:text-zinc-500 rounded-xl font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-indigo-500/20"
+                  >
+                    {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5 fill-current" />}
+                    <span>Iterate</span>
+                  </button>
+                  <button
+                    onClick={handleGenerate}
+                    disabled={isGenerating || (!prompt && images.length === 0)}
+                    className="flex-1 py-3 px-4 bg-white text-black hover:bg-zinc-200 disabled:bg-zinc-800 disabled:text-zinc-500 rounded-xl font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                  >
+                    <span>New UI</span>
+                  </button>
+                </div>
               ) : (
-                <>
-                  <Play className="w-5 h-5 fill-current" />
-                  <span>Generate UI</span>
-                </>
+                <button
+                  onClick={handleGenerate}
+                  disabled={isGenerating || (!prompt && images.length === 0)}
+                  className="w-full py-3 px-4 bg-white text-black hover:bg-zinc-200 disabled:bg-zinc-800 disabled:text-zinc-500 rounded-xl font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                >
+                  {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5 fill-current" />}
+                  <span>{isGenerating ? 'Generating...' : 'Generate UI'}</span>
+                </button>
               )}
-            </button>
+              
+              <div className="flex flex-col gap-2">
+                <select
+                  value={selectedVariationPack}
+                  onChange={(e) => setSelectedVariationPack(e.target.value)}
+                  disabled={isGenerating}
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none text-zinc-300"
+                >
+                  {VARIATION_PACKS.map(pack => (
+                    <option key={pack.id} value={pack.id}>{pack.name}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleGenerateVariations}
+                  disabled={isGenerating || (!prompt && images.length === 0)}
+                  className="w-full py-3 px-4 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white border border-zinc-700/50 disabled:bg-zinc-900 disabled:text-zinc-600 rounded-xl font-medium flex items-center justify-center gap-2 transition-all"
+                >
+                  <Layers className="w-4 h-4" />
+                  <span>Generate 3 Variations</span>
+                </button>
+              </div>
+            </>
           )}
-          
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between px-1">
-               <label className="text-xs font-medium text-zinc-400">Variations Style Pack</label>
-            </div>
-            <select
-              value={selectedVariationPack}
-              onChange={(e) => setSelectedVariationPack(e.target.value)}
-              disabled={isGenerating}
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none text-zinc-300"
-            >
-              {VARIATION_PACKS.map(pack => (
-                <option key={pack.id} value={pack.id}>{pack.name} ({pack.styles.map(s => s.name.split(' ')[0]).join('/')})</option>
-              ))}
-            </select>
-            <button
-              onClick={handleGenerateVariations}
-              disabled={isGenerating || (!prompt && images.length === 0)}
-              className="w-full py-3 px-4 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white border border-zinc-700/50 disabled:bg-zinc-900 disabled:text-zinc-600 rounded-xl font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-            >
-              <Layers className="w-4 h-4" />
-              <span>Generate 3 Variations</span>
-            </button>
-          </div>
 
           {error && (
             <div className="mt-1 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm flex items-start gap-2">
-              <span className="mt-0.5">⚠️</span>
+              <span>⚠️</span>
               <p className="leading-relaxed">{error}</p>
             </div>
           )}
@@ -590,52 +725,37 @@ export default function App() {
           <div className="flex items-center gap-4">
             {generatedHtml && (
               <div className="flex items-center gap-2 mr-4 border-r border-zinc-800 pr-4">
-                <button onClick={copyCode} className="p-2 hover:bg-zinc-800 rounded-md transition-colors text-zinc-400 hover:text-zinc-100 tooltip-trigger" title="Copy Code">
+                <button onClick={copyCode} className="p-2 hover:bg-zinc-800 rounded-md transition-colors text-zinc-400 hover:text-zinc-100" title="Copy Code">
                   {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                 </button>
-                <button onClick={downloadCode} className="p-2 hover:bg-zinc-800 rounded-md transition-colors text-zinc-400 hover:text-zinc-100 tooltip-trigger" title="Download HTML">
+                <button onClick={downloadCode} className="p-2 hover:bg-zinc-800 rounded-md transition-colors text-zinc-400 hover:text-zinc-100" title="Download HTML">
                   <Download className="w-4 h-4" />
                 </button>
-                <button onClick={downloadImage} className="p-2 hover:bg-zinc-800 rounded-md transition-colors text-zinc-400 hover:text-zinc-100 tooltip-trigger" title="Export as Image">
+                <button onClick={downloadImage} className="p-2 hover:bg-zinc-800 rounded-md transition-colors text-zinc-400 hover:text-zinc-100" title="Export as Image">
                   <Camera className="w-4 h-4" />
                 </button>
               </div>
             )}
 
             <div className="flex bg-zinc-900 p-1 rounded-lg border border-zinc-800">
-              <button
-                onClick={() => setDeviceMode('desktop')}
-                className={`p-1.5 rounded-md transition-all ${deviceMode === 'desktop' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
-              >
+              <button onClick={() => setDeviceMode('desktop')} className={`p-1.5 rounded-md transition-all ${deviceMode === 'desktop' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>
                 <Monitor className="w-4 h-4" />
               </button>
-              <button
-                onClick={() => setDeviceMode('mobile')}
-                className={`p-1.5 rounded-md transition-all ${deviceMode === 'mobile' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
-              >
+              <button onClick={() => setDeviceMode('mobile')} className={`p-1.5 rounded-md transition-all ${deviceMode === 'mobile' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>
                 <Smartphone className="w-4 h-4" />
               </button>
             </div>
 
             <div className="flex bg-zinc-900 p-1 rounded-lg border border-zinc-800">
-              <button
-                onClick={() => setViewMode('preview')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'preview' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
-              >
-                Preview
-              </button>
-              <button
-                onClick={() => setViewMode('code')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'code' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
-              >
-                Code
-              </button>
-              <button
-                onClick={() => setViewMode('analysis')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'analysis' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
-              >
-                Analysis
-              </button>
+              {['preview', 'code', 'analysis'].map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode as any)}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md capitalize transition-all ${viewMode === mode ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+                >
+                  {mode}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -643,7 +763,7 @@ export default function App() {
         {/* Tabs for Variations */}
         {generations.length > 1 && (
           <div className="flex items-center gap-2 px-6 py-2 bg-zinc-900/50 border-b border-zinc-800 overflow-x-auto">
-            {generations.map((gen, idx) => (
+            {generations.map((gen) => (
               <button
                 key={gen.id}
                 onClick={() => setActiveGenId(gen.id)}
@@ -654,7 +774,7 @@ export default function App() {
                 }`}
               >
                 {gen.isGenerating && <Loader2 className="w-3 h-3 animate-spin" />}
-                Gen {idx + 1}: {gen.styleName}
+                {gen.styleName}
               </button>
             ))}
           </div>
@@ -669,32 +789,16 @@ export default function App() {
               </div>
               <h2 className="text-2xl font-semibold mb-3 text-zinc-200">Ready to build</h2>
               <p className="text-zinc-500 leading-relaxed">
-                Describe the UI you want to create, or upload a reference image. The AI will generate a complete, responsive HTML file with Tailwind CSS.
+                Describe the UI you want to create, or upload a reference image.
               </p>
             </div>
           ) : activeGen?.isGenerating ? (
             <div className="flex flex-col items-center gap-6">
-              <div className="relative">
-                <div className="w-20 h-20 border-4 border-zinc-800 border-t-indigo-500 rounded-full animate-spin"></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-8 h-8 bg-indigo-500/20 rounded-full blur-xl"></div>
-                </div>
-              </div>
+              <div className="w-20 h-20 border-4 border-zinc-800 border-t-indigo-500 rounded-full animate-spin"></div>
               <div className="text-center space-y-2">
                 <h3 className="text-lg font-medium text-zinc-200">
-                  {isAnalyzingImagesForPrompt 
-                    ? 'Analyzing reference images...' 
-                    : streamingCode 
-                      ? 'Finalizing design...' 
-                      : 'Crafting your design...'}
+                  {isAnalyzingImagesForPrompt ? 'Analyzing images...' : 'Crafting your design...'}
                 </h3>
-                <p className="text-sm text-zinc-500 animate-pulse">
-                  {isAnalyzingImagesForPrompt 
-                    ? 'Understanding your visual style' 
-                    : streamingCode 
-                      ? 'Parsing JSON response' 
-                      : 'Writing HTML & Tailwind classes'}
-                </p>
               </div>
             </div>
           ) : viewMode === 'analysis' ? (
@@ -702,22 +806,13 @@ export default function App() {
               <div className="flex items-center px-6 py-4 border-b border-zinc-800 bg-[#161b22]">
                 <h3 className="text-lg font-medium text-zinc-200 flex items-center gap-2">
                   <Search className="w-5 h-5 text-indigo-400" />
-                  Design Analysis & Feedback
+                  Design Analysis
                 </h3>
               </div>
               <div className="flex-1 overflow-auto p-8 custom-scrollbar">
-                {isAnalyzing && !analysisResult ? (
+                {isAnalyzing ? (
                   <div className="flex flex-col items-center justify-center h-full gap-6">
-                    <div className="relative">
-                      <div className="w-16 h-16 border-4 border-zinc-800 border-t-indigo-500 rounded-full animate-spin"></div>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Search className="w-6 h-6 text-indigo-400 animate-pulse" />
-                      </div>
-                    </div>
-                    <div className="text-center space-y-2">
-                      <h3 className="text-lg font-medium text-zinc-200">AI is reviewing your design</h3>
-                      <p className="text-sm text-zinc-500 animate-pulse">Scanning layout, typography, and color harmony...</p>
-                    </div>
+                    <div className="w-16 h-16 border-4 border-zinc-800 border-t-indigo-500 rounded-full animate-spin"></div>
                   </div>
                 ) : analysisResult ? (
                   <div className="prose prose-invert prose-indigo max-w-none">
@@ -725,30 +820,19 @@ export default function App() {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-zinc-500">
-                    <ImageIcon className="w-12 h-12 mb-4 opacity-20" />
                     <p>Upload an image and click "Analyze Image" to get feedback.</p>
                   </div>
                 )}
               </div>
             </div>
           ) : viewMode === 'preview' ? (
-            <div className={`transition-all duration-500 ease-in-out ${deviceMode === 'mobile' ? 'w-[375px] h-[812px]' : 'w-full h-full'} bg-white rounded-xl shadow-2xl overflow-hidden border border-zinc-800/50 ring-1 ring-white/10`}>
-              <iframe
-                ref={iframeRef}
-                title="Preview"
-                className="w-full h-full bg-white"
-                sandbox="allow-scripts allow-same-origin"
-              />
+            <div className={`transition-all duration-500 ease-in-out ${deviceMode === 'mobile' ? 'w-[375px] h-[812px]' : 'w-full h-full'} bg-white rounded-xl shadow-2xl overflow-hidden border border-zinc-800/50`}>
+              <iframe ref={iframeRef} title="Preview" className="w-full h-full bg-white" sandbox="allow-scripts allow-same-origin" />
             </div>
           ) : (
             <div className="w-full h-full bg-[#0d1117] rounded-xl border border-zinc-800 overflow-hidden flex flex-col shadow-2xl">
               <div className="flex items-center px-4 py-2 bg-[#161b22] border-b border-zinc-800">
-                <div className="flex gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50"></div>
-                  <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50"></div>
-                  <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50"></div>
-                </div>
-                <span className="ml-4 text-xs font-mono text-zinc-500">index.html</span>
+                <span className="text-xs font-mono text-zinc-500">index.html</span>
               </div>
               <div className="flex-1 overflow-auto p-4 custom-scrollbar">
                 <pre className="text-sm font-mono text-zinc-300 leading-relaxed">
@@ -760,7 +844,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Settings Drawer */}
       <SideDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} title="Settings">
         <div className="space-y-6">
           <div className="space-y-3">
@@ -773,7 +856,6 @@ export default function App() {
               <option value="gemini-3-flash-preview">Gemini 3 Flash (Fast)</option>
               <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Advanced)</option>
             </select>
-            <p className="text-xs text-zinc-500">Pro model is better at complex layouts but takes longer to generate.</p>
           </div>
         </div>
       </SideDrawer>

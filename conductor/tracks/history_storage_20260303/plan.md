@@ -7,7 +7,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Storage Layer' (Protocol in workflow.md) 1f18469
 
 ## Phase 2: State Integration
-- [ ] Task: Integrate storage utilities into the main `App.tsx` state.
+- [~] Task: Integrate storage utilities into the main `App.tsx` state.
     - [ ] Update `useEffect` hooks to load history on mount.
     - [ ] Update state mutation functions to trigger `saveSession`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: State Integration' (Protocol in workflow.md)

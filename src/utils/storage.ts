@@ -1,4 +1,4 @@
-import { Session } from '../types';
+import { Session } from '../../types';
 
 const STORAGE_KEY = 'uiflash_sessions';
 
