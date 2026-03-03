@@ -27,6 +27,9 @@ import { Card } from "@/components/ui/card";
 
 import { ModeToggle } from './components/mode-toggle';
 
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+
 export default function App() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -748,20 +751,35 @@ export default function App() {
                   </p>
                 </div>
               ) : activeGen?.isGenerating ? (
-                <div className="flex flex-col items-center gap-8">
-                  <div className="relative">
-                    <div className="w-24 h-24 border-2 border-border border-t-primary rounded-full animate-spin"></div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-10 h-10 bg-primary/20 rounded-full blur-2xl animate-pulse"></div>
+                <div className="w-full max-w-2xl space-y-12 animate-in fade-in zoom-in-95 duration-1000">
+                  <div className="flex flex-col items-center gap-8">
+                    <div className="relative">
+                      <div className="w-32 h-32 border-2 border-primary/10 border-t-primary rounded-full animate-spin"></div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-16 h-16 bg-primary/20 rounded-full blur-3xl animate-pulse"></div>
+                        <Sparkles className="w-8 h-8 text-primary animate-bounce" />
+                      </div>
+                    </div>
+                    <div className="text-center space-y-4">
+                      <h3 className="text-sm font-bold uppercase tracking-[0.3em] text-foreground/80">
+                        {isAnalyzingImagesForPrompt ? 'Analyzing Visual Context' : 'Synthesizing Architecture'}
+                      </h3>
+                      <Progress value={streamingCode ? 90 : 40} className="h-1 w-64 mx-auto bg-primary/10" />
+                      <p className="text-[10px] text-muted-foreground font-mono animate-pulse">
+                        {streamingCode ? 'FINALIZING COMPONENT BUNDLE...' : 'PROCESSING GENERATIVE NEURAL LAYERS...'}
+                      </p>
                     </div>
                   </div>
-                  <div className="text-center space-y-3">
-                    <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-foreground/80">
-                      {isAnalyzingImagesForPrompt ? 'Analyzing Context' : 'Synthesizing UI'}
-                    </h3>
-                    <p className="text-[10px] text-muted-foreground font-mono animate-pulse">
-                      {streamingCode ? 'FINALIZING BUNDLE...' : 'PROCESSING MODEL OUTPUT...'}
-                    </p>
+                  
+                  <div className="grid grid-cols-2 gap-6 opacity-40">
+                    <div className="space-y-3">
+                      <Skeleton className="h-4 w-[250px] bg-primary/5" />
+                      <Skeleton className="h-4 w-[200px] bg-primary/5" />
+                    </div>
+                    <div className="space-y-3">
+                      <Skeleton className="h-4 w-[250px] bg-primary/5" />
+                      <Skeleton className="h-4 w-[200px] bg-primary/5" />
+                    </div>
                   </div>
                 </div>
               ) : viewMode === 'analysis' ? (
