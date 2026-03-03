@@ -1,10 +1,10 @@
-/* index.css - Immersive "Glassmorphism 2.0" Redesign */
-@import "tailwindcss";
-@plugin "@tailwindcss/typography";
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap');
+@import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -96,6 +96,7 @@
     --color-secondary-foreground: var(--secondary-foreground);
     --color-border: var(--border);
     --color-input: var(--input);
+    --color-ring: var(--ring);
 
     /* Custom Studio Colors */
     --color-studio-zinc: #050505;
@@ -111,7 +112,10 @@
 }
 
 @layer base {
-    * { @apply border-border outline-ring/50; }
+    * { 
+        border-color: var(--border);
+        outline-color: color-mix(in oklch, var(--ring) 50%, transparent);
+    }
     body { 
         @apply bg-background text-foreground antialiased; 
         font-family: var(--font-sans);
@@ -122,15 +126,26 @@
 
 @layer components {
     .glass-panel {
-        @apply bg-[var(--glass-bg)] border border-[var(--glass-border)] backdrop-blur-[var(--glass-blur)];
+        background-color: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        backdrop-filter: blur(var(--glass-blur));
     }
 
     .glass-card {
-        @apply glass-panel rounded-2xl shadow-2xl transition-all duration-500;
+        background-color: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        backdrop-filter: blur(var(--glass-blur));
+        border-radius: var(--radius-2xl);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        transition-property: all;
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        transition-duration: 500ms;
     }
 
     .glass-card:hover {
-        @apply border-white/20 -translate-y-1 shadow-white/5;
+        border-color: rgba(255, 255, 255, 0.2);
+        transform: translateY(-0.25rem);
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
     }
 }
 

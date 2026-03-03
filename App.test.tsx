@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import App from './App';
 import * as storage from './src/utils/storage';
+import { ThemeProvider } from './components/theme-provider';
 
 // Mock dependencies
 vi.mock('./src/services/geminiService', () => ({
@@ -37,6 +38,8 @@ vi.mock('lucide-react', () => ({
   Clock: () => <div data-testid="icon-clock" />,
   ChevronRight: () => <div data-testid="icon-chevron" />,
   LayoutPanelLeft: () => <div data-testid="icon-layout" />,
+  Sun: () => <div data-testid="icon-sun" />,
+  Moon: () => <div data-testid="icon-moon" />,
 }));
 
 // Mock shadcn components
@@ -56,14 +59,25 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipProvider: ({ children }: any) => <div>{children}</div>,
 }));
 
+// Mock ScrollArea and other potential sub-components if needed
+// For now, these basic mocks should suffice for basic rendering tests.
+
 describe('App Component Redesign Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
   });
 
+  const renderApp = () => {
+    return render(
+      <ThemeProvider attribute="class" defaultTheme="dark">
+        <App />
+      </ThemeProvider>
+    );
+  };
+
   it('renders correctly', () => {
-    render(<App />);
+    renderApp();
     expect(screen.getByRole('heading', { name: /^Studio$/i })).toBeInTheDocument();
   });
 
@@ -73,7 +87,7 @@ describe('App Component Redesign Integration', () => {
     ];
     vi.spyOn(storage, 'loadSessions').mockReturnValue(mockSessions);
     
-    render(<App />);
+    renderApp();
     
     expect(storage.loadSessions).toHaveBeenCalled();
   });

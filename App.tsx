@@ -569,7 +569,7 @@ export default function App() {
                         <img src={generatedAsset.url} alt="Generated Asset" className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
                           <Button 
-                            variant="primary" 
+                            variant="default" 
                             size="sm" 
                             className="h-8 gap-1.5 text-[10px] font-bold uppercase tracking-tighter"
                             onClick={addAssetToReferences}
