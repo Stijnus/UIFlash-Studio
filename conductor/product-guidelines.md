@@ -3,8 +3,8 @@
 ## 1. UX Philosophy: Dense & Feature-Rich
 The interface should act as a high-powered IDE rather than a simplistic tool. We prioritize exposing controls, variation packs, and configuration options upfront to reduce navigation clicks. The layout should efficiently utilize screen real estate to accommodate side-by-side previews, code editors, and AI feedback panels simultaneously.
 
-## 2. Visual Design Language: Neutral/Dark Theme Default
-To ensure the generated UIs remain the focal point, the application itself will default to a professional, low-contrast dark theme (e.g., heavily utilizing Tailwind's `zinc` or `slate` palettes). UI chrome should be unobtrusive, avoiding vibrant brand colors except for critical interactive elements like primary action buttons (e.g., "Generate").
+## 2. Visual Design Language: Glassmorphism 2.0 & Studio Aesthetic
+The application utilizes a "Glassmorphism 2.0" design system, characterized by backdrop blurs, subtle translucent borders, and layered depth. While the "Studio" environment favors a professional dark aesthetic to highlight generated content, it supports a full theme engine (Light/Dark/System) to accommodate user preference. UI elements should feel integrated yet distinct, using high-fidelity animations for state transitions.
 
 ## 3. AI Interaction Paradigms
 A multi-modal approach is required to cater to different user workflows:

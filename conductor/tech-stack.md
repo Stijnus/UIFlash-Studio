@@ -5,6 +5,7 @@
 - **Frontend Framework:** React 19
 - **Build Tool:** Vite 6
 - **Styling:** Tailwind CSS 4
+- **Component Library:** shadcn/ui (Radix UI primitives)
 
 ## Services & APIs
 - **AI Engine:** Google GenAI SDK (Gemini API)
@@ -16,3 +17,4 @@
 - **Export/Capture:** html2canvas
 - **Testing:** Vitest, React Testing Library, JSDOM
 - **Persistence:** Browser localStorage
+- **Theme Management:** next-themes

@@ -1,7 +1,7 @@
 # Product Guide: UIFlash Studio
 
 ## Overview
-UIFlash Studio is an open-source, AI-driven UI prototyping tool designed to empower frontend developers and UI/UX designers. Leveraging the speed and capabilities of Gemini 3 Flash, the platform allows users to rapidly generate, iterate, and analyze user interfaces using natural language and reference images.
+UIFlash Studio is an open-source, high-fidelity AI design environment built with shadcn/ui and styled with a Glassmorphism 2.0 aesthetic. Designed for frontend developers and designers, it leverages Gemini 3 Flash to transform natural language and reference images into functional, production-ready prototypes within a polished "Studio" workspace.
 
 ## Target Audience
 - **Frontend Developers:** Seeking to streamline their workflow with clean, responsive HTML/Tailwind CSS code generation.
@@ -12,7 +12,9 @@ UIFlash Studio is an open-source, AI-driven UI prototyping tool designed to empo
 
 ## Core Features
 - **Instant UI Generation:** Text-to-UI and Image-to-UI capabilities.
+- **Studio Design System:** A cohesive UI built on shadcn/ui components with a sophisticated Glassmorphism 2.0 aesthetic.
 - **Session Persistence:** Local history of generations allowing restoration of previous prompts and artifacts across sessions.
+- **Themeable Interface:** Support for multiple theme presets (Light, Dark, System) powered by next-themes.
 - **Device-Aware Design:** Automatic optimization for Mobile and Desktop views.
 - **Design Analysis:** AI-powered feedback on layout, typography, and accessibility using advanced models.
 - **Style Variations:** Simultaneous generation of multiple aesthetic styles (e.g., Brutalist, Glassmorphism).
