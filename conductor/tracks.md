@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: Add .env.example file**
+- [x] **Track: Add .env.example file**
 *Link: [./tracks/add_env_example_20260303/](./tracks/add_env_example_20260303/)*
