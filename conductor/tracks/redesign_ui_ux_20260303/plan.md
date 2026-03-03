@@ -24,10 +24,10 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Core Interface Overhaul' (Protocol in workflow.md) d230205
 
 ## Phase 3: Theme Engine & Loading States
-
-- [ ] Task: Implement Themeable UI engine.
+- [~] Task: Implement Themeable UI engine.
     - [ ] Configure shadcn CSS variables for multiple theme presets (Zinc, Indigo, etc.).
     - [ ] Add a theme toggle component.
+
 - [ ] Task: Unified Loading & State UI.
     - [ ] Implement high-fidelity loading animations using shadcn Skeleton and Progress.
 - [ ] Task: Final Polish & Mobile Optimization.

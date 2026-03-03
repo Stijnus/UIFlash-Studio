@@ -25,6 +25,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 
+import { ModeToggle } from './components/mode-toggle';
+
 export default function App() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -726,6 +728,7 @@ export default function App() {
                 </Tabs>
                 
                 <Separator orientation="vertical" className="h-4 bg-border/50" />
+                <ModeToggle />
                 <Button variant="ghost" size="icon" onClick={() => setIsDrawerOpen(true)} className="h-9 w-9 rounded-lg border border-border">
                   <Settings className="w-4 h-4" />
                 </Button>
