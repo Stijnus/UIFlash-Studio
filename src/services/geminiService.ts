@@ -116,6 +116,32 @@ export const analyzeImages = async (images: { data: string; mimeType: string }[]
     return response.text;
 };
 
+export const generateImageAsset = async (prompt: string) => {
+    const ai = getAi();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+            imageConfig: {
+                aspectRatio: "1:1",
+            },
+        } as any,
+    }).catch(err => {
+        throw new Error(`Failed to generate image: ${err.message}`);
+    });
+
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+        if (part.inlineData) {
+            return {
+                data: part.inlineData.data,
+                mimeType: part.inlineData.mimeType,
+                url: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`
+            };
+        }
+    }
+    throw new Error("No image data returned from model.");
+};
+
 export const analyzeImageForFeedback = async function* (images: { data: string; mimeType: string }[]) {
     const ai = getAi();
     const parts: any[] = [

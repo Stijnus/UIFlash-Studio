@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { generateUI, analyzeImages, analyzeImageForFeedback } from './src/services/geminiService';
+import { generateUI, analyzeImages, analyzeImageForFeedback, generateImageAsset } from './src/services/geminiService';
 import SideDrawer from './components/SideDrawer';
-import { Settings, Image as ImageIcon, Code, Play, Smartphone, Monitor, Trash2, Layers, Loader2, Download, Copy, Check, Search, Camera } from 'lucide-react';
+import { Settings, Image as ImageIcon, Code, Play, Smartphone, Monitor, Trash2, Layers, Loader2, Download, Copy, Check, Search, Camera, Sparkles, Plus } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { VARIATION_PACKS } from './constants';
 
@@ -22,6 +22,10 @@ export default function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAnalyzingImagesForPrompt, setIsAnalyzingImagesForPrompt] = useState(false);
   const [selectedVariationPack, setSelectedVariationPack] = useState(VARIATION_PACKS[0].id);
+
+  const [assetPrompt, setAssetPrompt] = useState('');
+  const [isGeneratingAsset, setIsGeneratingAsset] = useState(false);
+  const [generatedAsset, setGeneratedAsset] = useState<{ data: string; mimeType: string; url: string } | null>(null);
 
   const [generations, setGenerations] = useState<{
     id: string;
@@ -281,6 +285,28 @@ export default function App() {
     }
   };
 
+  const handleGenerateAsset = async () => {
+    if (!assetPrompt) return;
+    setIsGeneratingAsset(true);
+    setError('');
+    try {
+      const asset = await generateImageAsset(assetPrompt);
+      setGeneratedAsset(asset);
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate asset.');
+    } finally {
+      setIsGeneratingAsset(false);
+    }
+  };
+
+  const addAssetToReferences = () => {
+    if (generatedAsset && images.length < 3) {
+      setImages(prev => [...prev, generatedAsset]);
+      setGeneratedAsset(null);
+      setAssetPrompt('');
+    }
+  };
+
   const copyCode = () => {
     navigator.clipboard.writeText(generatedHtml);
     setCopied(true);
@@ -420,6 +446,55 @@ export default function App() {
               multiple 
               className="hidden" 
             />
+          </div>
+
+          <div className="space-y-3 pt-4 border-t border-zinc-800">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                <Sparkles className="w-3 h-3 text-indigo-400" />
+                Asset Generator
+              </label>
+            </div>
+            <p className="text-[10px] text-zinc-500 leading-tight">Generate custom logos, icons, or hero images using Gemini Flash Image.</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={assetPrompt}
+                onChange={(e) => setAssetPrompt(e.target.value)}
+                placeholder="E.g., Minimalist tech logo..."
+                className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
+                onKeyDown={(e) => e.key === 'Enter' && handleGenerateAsset()}
+              />
+              <button
+                onClick={handleGenerateAsset}
+                disabled={isGeneratingAsset || !assetPrompt}
+                className="p-2 bg-indigo-500 text-white hover:bg-indigo-600 disabled:bg-zinc-800 disabled:text-zinc-500 rounded-lg transition-all"
+              >
+                {isGeneratingAsset ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              </button>
+            </div>
+
+            {generatedAsset && (
+              <div className="relative group aspect-square rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950 mt-3 shadow-xl">
+                <img src={generatedAsset.url} alt="Generated Asset" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                  <button 
+                    onClick={addAssetToReferences}
+                    disabled={images.length >= 3}
+                    className="px-3 py-1.5 bg-indigo-500 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 hover:bg-indigo-600 transition-colors disabled:bg-zinc-700"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Use as Reference
+                  </button>
+                  <button 
+                    onClick={() => setGeneratedAsset(null)}
+                    className="px-3 py-1.5 bg-zinc-800 text-zinc-300 rounded-lg text-xs font-medium hover:bg-zinc-700 transition-colors"
+                  >
+                    Discard
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
