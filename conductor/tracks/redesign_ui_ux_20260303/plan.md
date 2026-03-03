@@ -12,7 +12,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: shadcn/ui Integration & Foundation' (Protocol in workflow.md) 9fc5633
 
 ## Phase 2: Core Interface Overhaul
-- [ ] Task: Redesign Sidebar & Controls.
+- [~] Task: Redesign Sidebar & Controls.
     - [ ] Write unit tests for the new sidebar component.
     - [ ] Implement Sidebar using shadcn/ui (Sheet or Sidebar component).
 - [ ] Task: Redesign Artifact Preview UI.
