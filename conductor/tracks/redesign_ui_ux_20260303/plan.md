@@ -18,9 +18,9 @@
 - [x] Task: Redesign Artifact Preview UI. 7846521
     - [x] Write unit tests for artifact display logic. 7846521
     - [x] Implement polished preview container with shadcn/ui Cards and Toolbars. 7846521
-- [~] Task: Revamp Input Ergonomics & Asset Generator.
-    - [ ] Write unit tests for prompt submission and image upload UI.
-    - [ ] Implement prompt area and asset generator using shadcn/ui form components.
+- [x] Task: Revamp Input Ergonomics & Asset Generator. 58333ec
+    - [x] Write unit tests for prompt submission and image upload UI. 58333ec
+    - [x] Implement prompt area and asset generator using shadcn/ui form components. 58333ec
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Core Interface Overhaul' (Protocol in workflow.md)
 
 ## Phase 3: Theme Engine & Loading States
