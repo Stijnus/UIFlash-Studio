@@ -14,3 +14,5 @@
 - **Icons:** Lucide React
 - **Markdown Rendering:** React Markdown (with Tailwind Typography plugin)
 - **Export/Capture:** html2canvas
+- **Testing:** Vitest, React Testing Library, JSDOM
+- **Persistence:** Browser localStorage

@@ -12,6 +12,7 @@ UIFlash Studio is an open-source, AI-driven UI prototyping tool designed to empo
 
 ## Core Features
 - **Instant UI Generation:** Text-to-UI and Image-to-UI capabilities.
+- **Session Persistence:** Local history of generations allowing restoration of previous prompts and artifacts across sessions.
 - **Device-Aware Design:** Automatic optimization for Mobile and Desktop views.
 - **Design Analysis:** AI-powered feedback on layout, typography, and accessibility using advanced models.
 - **Style Variations:** Simultaneous generation of multiple aesthetic styles (e.g., Brutalist, Glassmorphism).
