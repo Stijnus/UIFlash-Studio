@@ -1,9 +1,9 @@
 # Implementation Plan: history_storage_20260303
 
 ## Phase 1: Storage Layer
-- [ ] Task: Implement storage utility functions for saving and retrieving sessions.
-    - [ ] Write unit tests for storage utility.
-    - [ ] Implement `saveSession` and `loadSessions` logic using `localStorage`.
+- [x] Task: Implement storage utility functions for saving and retrieving sessions. bebf974
+    - [x] Write unit tests for storage utility. bebf974
+    - [x] Implement `saveSession` and `loadSessions` logic using `localStorage`. bebf974
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Storage Layer' (Protocol in workflow.md)
 
 ## Phase 2: State Integration
