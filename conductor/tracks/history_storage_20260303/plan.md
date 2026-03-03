@@ -6,8 +6,8 @@
     - [x] Implement `saveSession` and `loadSessions` logic using `localStorage`. bebf974
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Storage Layer' (Protocol in workflow.md) 1f18469
 
-## Phase 2: State Integration
-- [~] Task: Integrate storage utilities into the main `App.tsx` state.
-    - [ ] Update `useEffect` hooks to load history on mount.
-    - [ ] Update state mutation functions to trigger `saveSession`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: State Integration' (Protocol in workflow.md)
+## Phase 2: State Integration [checkpoint: 3b5c4de]
+- [x] Task: Integrate storage utilities into the main `App.tsx` state. bebf974
+    - [x] Update `useEffect` hooks to load history on mount. bebf974
+    - [x] Update state mutation functions to trigger `saveSession`. bebf974
+- [x] Task: Conductor - User Manual Verification 'Phase 2: State Integration' (Protocol in workflow.md) 3b5c4de
